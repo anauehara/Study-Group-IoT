@@ -1,4 +1,11 @@
-#include "config.h"
+#define BLYNK_TEMPLATE_ID "TMPL2q0qL0SbQ"
+#define BLYNK_TEMPLATE_NAME "Controle Leds"
+#define BLYNK_AUTH_TOKEN "2P6aaGaVw1TD8Ij4J7njaFhW02719AXn"
+
+
+// Rede wi-fi
+char ssid[] = "###";
+char pass[] = "###";
 
 #define BLYNK_PRINT Serial
 
