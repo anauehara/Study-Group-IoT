@@ -1,0 +1,386 @@
+  /*****************************************************
+  * PROJETO UNIFICADO
+  * ESP32 + Blynk + TCRT5000 + LDR + DHT11
+  *
+  * OBS:
+  * - A LÓGICA ORIGINAL FOI MANTIDA EXATAMENTE IGUAL
+  * - Apenas os PINOS foram reorganizados para evitar conflito
+  * - HASHES DO BLYNK IGNORADOS CONFORME PEDIDO
+  *****************************************************/
+
+  // ====================================================
+  // CONFIGURAÇÕES DO BLYNK
+  // ====================================================
+  #define BLYNK_PRINT Serial
+
+  #define BLYNK_TEMPLATE_ID "TMPL22v6VhBqy"
+  #define BLYNK_TEMPLATE_NAME "Casa Automática"
+  #define BLYNK_AUTH_TOKEN "Ua7q1vzgTQnLYS3CItK4zM8NrtuVPAYz"
+
+  // ====================================================
+  // BIBLIOTECAS NECESSÁRIAS
+  // ====================================================
+  #include <WiFi.h>
+  #include <WiFiClient.h>
+  #include <BlynkSimpleEsp32.h>
+  #include <DHT.h>
+
+  // ====================================================
+  // CREDENCIAIS WI-FI
+  // ====================================================
+  char ssid[] = "...";
+  char pass[] = "...";
+
+  // ====================================================
+  // DEFINIÇÃO DOS PINOS
+  // ====================================================
+
+  // ---------- TCRT5000 ----------
+  const int SENSOR_PIN = 4;       // TCRT5000
+
+  // ---------- LDR ----------
+  const int LDR_PIN = 15;         // LDR
+
+  // ---------- DHT11 ----------
+  #define DHTPIN 5
+  #define DHTTYPE DHT11
+
+  // ---------- LEDs ----------
+  const int LED_TCRT = 21;        // LED do TCRT5000
+  const int LED_LDR = 18;         // LED do LDR
+  const int LED_TEMP = 19;     // temperatura
+  const int LED_FIXO = 23;        // LED sempre ligado
+  const int LED_UMIDADE = 2;   // umidade
+
+  // ====================================================
+  // PINOS VIRTUAIS DO BLYNK
+  // ====================================================
+
+  // ---------- TCRT5000 ----------
+  #define VIRTUAL_MOVIMENTO V0
+  #define VIRTUAL_LOGICA_TCRT V1
+  #define VIRTUAL_TEMPO_LED V3
+
+  // ---------- LDR ----------
+  #define VIRTUAL_LUMINOSIDADE V4
+  #define VIRTUAL_LOGICA_LDR V5
+
+  // ---------- DHT11 ----------
+  #define VIRTUAL_UMIDADE V6
+  #define VIRTUAL_TEMPERATURA V7
+  #define VIRTUAL_TEMP_LIMITE V8
+  #define VIRTUAL_UMIDADE_LIMITE V9
+
+  // ====================================================
+  // VARIÁVEIS GLOBAIS - TCRT5000
+  // ====================================================
+  bool inverterLogicaTCRT = false;
+
+  unsigned long tempoLED = 5000;
+  unsigned long ultimoMovimento = 0;
+
+  // ====================================================
+  // VARIÁVEIS GLOBAIS - LDR
+  // ====================================================
+  bool inverterLogicaLDR = false;
+
+  // ====================================================
+  // VARIÁVEIS GLOBAIS - DHT11
+  // ====================================================
+  float temperaturaLimite = 5.0;
+  float umidadeLimite = 5.0;
+  bool alertaAtivo = false;
+
+  // ====================================================
+  // OBJETOS
+  // ====================================================
+  DHT dht(DHTPIN, DHTTYPE);
+  BlynkTimer timer;
+
+  // ====================================================
+  // TCRT5000 - BOTÃO APP
+  // ====================================================
+  BLYNK_WRITE(VIRTUAL_LOGICA_TCRT) {
+
+    inverterLogicaTCRT = param.asInt();
+
+    if (inverterLogicaTCRT)
+      Serial.println("Modo invertido ativado.");
+    else
+      Serial.println("Modo normal ativado.");
+  }
+
+  // ====================================================
+  // TCRT5000 - SLIDER TEMPO
+  // ====================================================
+  BLYNK_WRITE(VIRTUAL_TEMPO_LED) {
+
+    int segundos = param.asInt();
+
+    if (segundos <= 0)
+      segundos = 1;
+
+    tempoLED = segundos * 1000UL;
+
+    Serial.print("Tempo do LED: ");
+    Serial.print(segundos);
+    Serial.println(" segundos.");
+  }
+
+  // ====================================================
+  // LDR - BOTÃO APP
+  // ====================================================
+  BLYNK_WRITE(VIRTUAL_LOGICA_LDR) {
+
+      inverterLogicaLDR = param.asInt();
+
+      if (inverterLogicaLDR) {
+          Serial.println("Modo invertido ativado: LED acende no ESCURO.");
+      } else {
+          Serial.println("Modo normal ativado: LED acende com LUZ.");
+      }
+  }
+
+  // ====================================================
+  // DHT11 - LIMITE TEMPERATURA
+  // ====================================================
+  BLYNK_WRITE(VIRTUAL_TEMP_LIMITE) {
+
+    temperaturaLimite = param.asFloat();
+
+    Serial.print("Novo limite de temperatura recebido: ");
+    Serial.println(temperaturaLimite);
+  }
+
+  // ====================================================
+  // DHT11 - LIMITE UMIDADE
+  // ====================================================
+  BLYNK_WRITE(VIRTUAL_UMIDADE_LIMITE) {
+
+    umidadeLimite = param.asFloat();
+
+    Serial.print("Novo limite de umidade recebido: ");
+    Serial.println(umidadeLimite);
+  }
+
+  // ====================================================
+  // FUNÇÃO TCRT5000
+  // ====================================================
+  void sendTCRT() {
+
+    int leitura = digitalRead(SENSOR_PIN);
+
+    // LOW = objeto detectado
+    bool movimento = (leitura == LOW);
+
+    Blynk.virtualWrite(VIRTUAL_MOVIMENTO, movimento);
+
+    unsigned long agora = millis();
+
+    bool condicaoAtiva;
+
+    // --------------------------------
+    // MODO NORMAL / INVERTIDO
+    // --------------------------------
+
+    if (!inverterLogicaTCRT) {
+
+      // NORMAL:
+      // liga quando detecta movimento
+      condicaoAtiva = movimento;
+
+    } else {
+
+      // INVERTIDO:
+      // liga quando NÃO detecta movimento
+      condicaoAtiva = !movimento;
+    }
+
+    // --------------------------------
+    // CONTROLE DO LED
+    // --------------------------------
+
+    if (condicaoAtiva) {
+
+      ultimoMovimento = agora;
+
+      digitalWrite(LED_TCRT, HIGH);
+
+    } else {
+
+      // mantém ligado pelo tempo definido
+      if (agora - ultimoMovimento >= tempoLED) {
+
+        digitalWrite(LED_TCRT, LOW);
+      }
+    }
+  }
+
+  // ====================================================
+  // FUNÇÃO LDR
+  // ====================================================
+  void sendLDR() {
+
+      int leitura = digitalRead(LDR_PIN);
+
+      // envia ao Blynk
+      Blynk.virtualWrite(VIRTUAL_LUMINOSIDADE, leitura);
+
+      bool condicaoAtiva;
+
+      // --------------------------------
+      // MODO NORMAL / INVERTIDO
+      // --------------------------------
+
+      if (!inverterLogicaLDR) {
+
+          // NORMAL:
+          // LED liga com luz
+          condicaoAtiva = (leitura == HIGH);
+
+      } else {
+
+          // INVERTIDO:
+          // LED liga no escuro
+          condicaoAtiva = (leitura == LOW);
+      }
+
+      // --------------------------------
+      // CONTROLE DO LED
+      // --------------------------------
+
+      digitalWrite(LED_LDR, condicaoAtiva ? HIGH : LOW);
+
+      // DEBUG SERIAL
+      Serial.print("LDR: ");
+      Serial.print(leitura);
+
+      Serial.print(" | Modo invertido: ");
+      Serial.print(inverterLogicaLDR);
+
+      Serial.print(" | LED: ");
+      Serial.println(condicaoAtiva ? "ACESO" : "APAGADO");
+  }
+
+  // ====================================================
+  // FUNÇÃO DHT11
+  // ====================================================
+  void sendDHT() {
+
+      float h = dht.readHumidity();
+      float t = dht.readTemperature();
+
+      // verifica erro
+      if (isnan(h) || isnan(t)) {
+
+          Serial.println("Falha na leitura do DHT11");
+          return;
+      }
+
+      // envia ao Blynk
+      Blynk.virtualWrite(VIRTUAL_UMIDADE, h);
+      Blynk.virtualWrite(VIRTUAL_TEMPERATURA, t);
+
+      // --------------------------------
+      // ALERTA DE UMIDADE
+      // GPIO2
+      // acende quando umidade MENOR
+      // que o limite definido
+      // --------------------------------
+
+      if (h <= umidadeLimite) {
+
+          digitalWrite(LED_UMIDADE, HIGH);
+
+      } else {
+
+          digitalWrite(LED_UMIDADE, LOW);
+      }
+
+      // --------------------------------
+      // ALERTA DE TEMPERATURA
+      // GPIO19
+      // acende quando temperatura MAIOR
+      // que o limite definido
+      // --------------------------------
+
+      if (t >= temperaturaLimite) {
+
+          digitalWrite(LED_TEMP, HIGH);
+
+      } else {
+
+          digitalWrite(LED_TEMP, LOW);
+      }
+
+      // DEBUG SERIAL
+      Serial.print("Temperatura: ");
+      Serial.print(t);
+      Serial.print(" °C");
+
+      Serial.print(" | Umidade: ");
+      Serial.print(h);
+      Serial.println(" %");
+  }
+
+  // ====================================================
+  // SETUP
+  // ====================================================
+  void setup() {
+
+      Serial.begin(9600);
+
+      Serial.println("Iniciando sistema unificado...");
+
+      // ------------------------------------------------
+      // CONFIGURAÇÃO DOS PINOS
+      // ------------------------------------------------
+
+      pinMode(SENSOR_PIN, INPUT);
+      pinMode(LDR_PIN, INPUT);
+
+      pinMode(LED_TCRT, OUTPUT);
+      pinMode(LED_LDR, OUTPUT);
+      pinMode(LED_TEMP, OUTPUT);
+      pinMode(LED_UMIDADE, OUTPUT);
+      pinMode(LED_FIXO, OUTPUT);
+
+      // ------------------------------------------------
+      // LED FIXO
+      // ------------------------------------------------
+
+      digitalWrite(LED_FIXO, HIGH);
+
+      Serial.println("LED fixo ligado.");
+
+      // ------------------------------------------------
+      // BLYNK
+      // ------------------------------------------------
+
+      Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+      Serial.println("Conectado ao Blynk!");
+
+      // ------------------------------------------------
+      // DHT
+      // ------------------------------------------------
+
+      dht.begin();
+
+      // ------------------------------------------------
+      // TIMERS
+      // ------------------------------------------------
+
+      timer.setInterval(200L, sendTCRT);
+      timer.setInterval(2000L, sendLDR);
+      timer.setInterval(2000L, sendDHT);
+  }
+
+  // ====================================================
+  // LOOP
+  // ====================================================
+  void loop() {
+
+      Blynk.run();
+      timer.run();
+  }
