@@ -19,8 +19,6 @@ All the code is in the [`Programas/`](Programas/) folder. Each subfolder is an A
 | `Unificação dos Sensores/UnifiedCode/` | Integrated "Casa Automática" (automated home) project: combines the TCRT5000 sensor (motion), the LDR (light) and the DHT11 (temperature and humidity) in a single sketch, with pins rearranged to avoid conflicts. |
 | `Unificação dos Sensores/sketch_may19a/` | Variant of the integrated project, with separate LEDs for temperature and humidity. |
 
-The file `Programas/config_wifi.h` exists but is currently empty.
-
 ## Hardware
 
 - ESP32 board
@@ -46,10 +44,6 @@ The file `Programas/config_wifi.h` exists but is currently empty.
 4. For the Blynk projects, create a template in the [Blynk Console](https://blynk.cloud), set up the virtual pins used in the code, and fill in `BLYNK_TEMPLATE_ID`, `BLYNK_TEMPLATE_NAME` and `BLYNK_AUTH_TOKEN` with your device's values.
 5. Wire the circuit according to the pins defined in the sketch, select the board and port, and upload the code.
 6. For the `ServidorNoESP32` project, open the serial monitor to see the IP address and visit it in a browser on the same network.
-
-## Security notice
-
-Sketches should not be published with real credentials. Before committing, keep `ssid`, `pass` and `BLYNK_AUTH_TOKEN` as placeholders, or move them to a local file such as `config_wifi.h` listed in `.gitignore`.
 
 ## Context
 
