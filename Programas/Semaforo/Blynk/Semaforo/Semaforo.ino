@@ -1,6 +1,6 @@
 #define BLYNK_TEMPLATE_ID "TMPL2q0qL0SbQ"
 #define BLYNK_TEMPLATE_NAME "Controle Leds"
-#define BLYNK_AUTH_TOKEN "2P6aaGaVw1TD8Ij4J7njaFhW02719AXn"
+#define BLYNK_AUTH_TOKEN "##"
 
 
 // Rede wi-fi
