@@ -2,7 +2,7 @@
 
 #define BLYNK_TEMPLATE_ID "TMPL2yBO12Vfy"
 #define BLYNK_TEMPLATE_NAME "Temperatura e umidade"
-#define BLYNK_AUTH_TOKEN "-HHNSM_AGykkVSHdZk4aCL5dti4-XTqn"
+#define BLYNK_AUTH_TOKEN "##"
 
 // Bibliotecas necessárias
 #include <WiFi.h>
