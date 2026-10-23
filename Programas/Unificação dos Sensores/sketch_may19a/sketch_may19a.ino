@@ -15,7 +15,7 @@
 
   #define BLYNK_TEMPLATE_ID "TMPL22v6VhBqy"
   #define BLYNK_TEMPLATE_NAME "Casa Automática"
-  #define BLYNK_AUTH_TOKEN "Ua7q1vzgTQnLYS3CItK4zM8NrtuVPAYz"
+  #define BLYNK_AUTH_TOKEN "##"
 
   // ====================================================
   // BIBLIOTECAS NECESSÁRIAS
