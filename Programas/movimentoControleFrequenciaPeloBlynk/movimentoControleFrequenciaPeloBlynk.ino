@@ -15,7 +15,7 @@
 #define BLYNK_PRINT Serial
 #define BLYNK_TEMPLATE_ID "TMPL2dVP325wU"
 #define BLYNK_TEMPLATE_NAME "Movimento"
-#define BLYNK_AUTH_TOKEN "8pqf2OEoqgnEiqRypSWAKhDf6l7d0veE"
+#define BLYNK_AUTH_TOKEN "##"
 
 // ----------------------------------------------------
 // BIBLIOTECAS NECESSÁRIAS
